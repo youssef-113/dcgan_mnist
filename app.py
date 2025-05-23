@@ -8,6 +8,9 @@ from PIL import Image
 import torchvision.transforms as transforms
 from generator_model import Generator  # Ensure this file defines your Generator
 
+# ---------------------
+# Streamlit App Config
+# ---------------------
 st.set_page_config(
     page_title="DCGAN Handwritten Digit Generator",
     page_icon="🧠",
@@ -20,6 +23,9 @@ st.write(
     "Adjust parameters below and generate new samples on the fly!"
 )
 
+# ---------------------
+# Load and Cache Model
+# ---------------------
 @st.cache_resource
 def load_generator_model(path: str = "./Models/generator.pth") -> torch.nn.Module:
     model = Generator()
@@ -34,21 +40,39 @@ def load_generator_model(path: str = "./Models/generator.pth") -> torch.nn.Modul
 
 G = load_generator_model()
 
+# ---------------------
+# Sidebar Controls
+# ---------------------
 st.sidebar.header("Generation Settings")
 
 num_cols = st.sidebar.slider(
-    "Columns", 4, 16, 8, 1,
+    label="Columns",
+    min_value=4,
+    max_value=16,
+    value=8,
+    step=1,
     help="Number of columns in the generated image grid."
 )
 num_rows = st.sidebar.slider(
-    "Rows", 1, 8, 2, 1,
+    label="Rows",
+    min_value=1,
+    max_value=8,
+    value=2,
+    step=1,
     help="Number of rows in the generated image grid."
 )
 noise_dim = st.sidebar.number_input(
-    "Latent Vector Size", min_value=10, max_value=200, value=100, step=10
+    label="Latent Vector Size",
+    min_value=10,
+    max_value=200,
+    value=100,
+    step=10
 )
 seed = st.sidebar.number_input(
-    "Random Seed (optional)", min_value=0, value=42, step=1
+    label="Random Seed (optional)",
+    min_value=0,
+    value=42,
+    step=1
 )
 
 if st.sidebar.button("Generate Digits"):
@@ -85,15 +109,18 @@ if st.sidebar.button("Generate Digits"):
         mime="image/png"
     )
 
+# ---------------------
+# Optional: Retraining Demo (Hidden)
+# ---------------------
 st.sidebar.header("Demo: Single-Step Retrain")
 retrain = st.sidebar.checkbox(
-    "Enable single-step retraining",
+    label="Enable single-step retraining",
     help="For demonstration only: perform one gradient step on a single uploaded image."
 )
 if retrain:
     st.sidebar.markdown("---")
     uploaded_file = st.sidebar.file_uploader(
-        "Upload 28×28 grayscale image", type=["png", "jpg", "jpeg"]
+        label="Upload 28×28 grayscale image", type=["png", "jpg", "jpeg"]
     )
     if uploaded_file is not None and st.sidebar.button("Retrain Generator"):
         # Load and display uploaded image via Matplotlib to avoid Streamlit image errors
@@ -131,6 +158,9 @@ if retrain:
         ax2.imshow(updated, cmap='gray')
         st.pyplot(fig2)
 
+# ---------------------
+# Footer
+# ---------------------
 st.markdown("---")
 st.write(
     "Ensure you have the required libraries installed: `pip install streamlit torch torchvision matplotlib pillow`."
