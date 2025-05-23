@@ -88,9 +88,11 @@ elif mode == "Retrain Generator":
         plt.axis("off")
         plt.imshow(grid.permute(1, 2, 0).squeeze().numpy(), cmap="gray")
         st.pyplot(plt)
-
-st.markdown("""
----
-Made with ❤️ using PyTorch and Streamlit.  
-Upload your `generator_model.py` and `generator.pth` to run this app locally.
-""")
+    
+# Note: This is a simplified example. In a real-world scenario, you would want to implement proper retraining logic and handle the model's state more robustly.
+# Ensure you have the required libraries installed:
+# pip install streamlit torch torchvision matplotlib pillow
+# To run the app, save this code in a file named `app.py` and run:
+# streamlit run app.py
+# Make sure to have the generator_model.py file in the same directory with the Generator class defined.
+# The generator.pth file should contain the trained model weights.
