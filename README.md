@@ -6,7 +6,14 @@ This project implements a Deep Convolutional Generative Adversarial Network (**D
 
 ## 🚀 Live Demo
 
-🔗 *\[Add your Streamlit Cloud or Hugging Face Spaces link here]*
+🔗 *\[]*
+
+## Kaggle Notebooke
+🔗 *\[https://www.kaggle.com/code/youssefbassiouny/dcgan-mnist]*
+
+## Colab Notebooke
+🔗 *\[https://colab.research.google.com/drive/1m1xmjRWhObuEYzjrTfhzRUFNsSsYOR0Z?usp=sharing]*
+
 
 ---
 
