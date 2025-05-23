@@ -1,170 +1,94 @@
-import streamlit as st
-import torch
-import torchvision.utils as vutils
 import matplotlib.pyplot as plt
-import numpy as np
-from io import BytesIO
-from PIL import Image
 import torchvision.transforms as transforms
-from generator_model import Generator  # Ensure this file defines your Generator
+from PIL import Image
+from generator_model import Generator  # Make sure this file is in the same directory
+from generator_model import Generator  
 
-# ---------------------
-# Streamlit App Config
-# ---------------------
-st.set_page_config(
-    page_title="DCGAN Handwritten Digit Generator",
-    page_icon="🧠",
-    layout="wide",
-)
-
+# Streamlit page config
+st.set_page_config(page_title="DCGAN Digit Generator", layout="centered")
 st.title("🧠 DCGAN - Handwritten Digit Generator")
-st.write(
-    "This app uses a trained DCGAN generator to create realistic-looking handwritten digits. "
-    "Adjust parameters below and generate new samples on the fly!"
-)
 
-# ---------------------
-# Load and Cache Model
-# ---------------------
+# Load model
 @st.cache_resource
-def load_generator_model(path: str = "./Models/generator.pth") -> torch.nn.Module:
+def load_model():
     model = Generator()
-    try:
-        state = torch.load(path, map_location=torch.device('cpu'))
-        model.load_state_dict(state)
-        model.eval()
-    except FileNotFoundError:
-        st.error(f"Model file not found at {path}. Please ensure the path is correct.")
-        st.stop()
+    model.load_state_dict(torch.load("generator.pth", map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load("./Models/generator.pth", map_location=torch.device('cpu')))
+    model.eval()
     return model
 
-G = load_generator_model()
+G = load_model()
+latent_dim = 100
 
-# ---------------------
-# Sidebar Controls
-# ---------------------
-st.sidebar.header("Generation Settings")
+st.sidebar.header("Options")
+mode = st.sidebar.radio("Choose Mode", ("Generate Digits", "Retrain Generator"))
 
-num_cols = st.sidebar.slider(
-    label="Columns",
-    min_value=4,
-    max_value=16,
-    value=8,
-    step=1,
-    help="Number of columns in the generated image grid."
-)
-num_rows = st.sidebar.slider(
-    label="Rows",
-    min_value=1,
-    max_value=8,
-    value=2,
-    step=1,
-    help="Number of rows in the generated image grid."
-)
-noise_dim = st.sidebar.number_input(
-    label="Latent Vector Size",
-    min_value=10,
-    max_value=200,
-    value=100,
-    step=10
-)
-seed = st.sidebar.number_input(
-    label="Random Seed (optional)",
-    min_value=0,
-    value=42,
-    step=1
-)
+if mode == "Generate Digits":
+    num_images = st.sidebar.slider("Number of digits to generate", min_value=4, max_value=64, value=16, step=4)
 
-if st.sidebar.button("Generate Digits"):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    if st.button("Generate Digits"):
+        with st.spinner("Generating images..."):
+            noise = torch.randn(num_images, latent_dim)
+            fake_images = G(noise).detach().cpu()
 
-    total_images = num_cols * num_rows
-    noise = torch.randn(total_images, noise_dim)
+            # Plot generated digits
+            grid = vutils.make_grid(fake_images, nrow=8, normalize=True)
+            plt.figure(figsize=(10, 10))
+            plt.axis("off")
+            plt.imshow(grid.permute(1, 2, 0).numpy())
+            st.pyplot(plt)
 
-    with st.spinner("Generating images..."):
-        fake_images = G(noise).detach().cpu()
+elif mode == "Retrain Generator":
+    st.markdown("### Upload a new image to retrain the generator (demo purpose only)")
+    uploaded_file = st.file_uploader("Upload a 28x28 grayscale image", type=["png", "jpg", "jpeg"])
 
-    grid = vutils.make_grid(
-        fake_images,
-        nrow=num_cols,
-        normalize=True,
-        scale_each=True
-    )
-
-    grid_np = grid.permute(1, 2, 0).numpy()
-
-    fig, ax = plt.subplots(figsize=(num_cols, num_rows))
-    ax.axis("off")
-    ax.imshow(grid_np)
-    st.pyplot(fig)
-
-    buf = BytesIO()
-    plt.imsave(buf, grid_np)
-    buf.seek(0)
-    st.download_button(
-        label="Download Image",
-        data=buf,
-        file_name="dcgan_digits.png",
-        mime="image/png"
-    )
-
-# ---------------------
-# Optional: Retraining Demo (Hidden)
-# ---------------------
-st.sidebar.header("Demo: Single-Step Retrain")
-retrain = st.sidebar.checkbox(
-    label="Enable single-step retraining",
-    help="For demonstration only: perform one gradient step on a single uploaded image."
-)
-if retrain:
-    st.sidebar.markdown("---")
-    uploaded_file = st.sidebar.file_uploader(
-        label="Upload 28×28 grayscale image", type=["png", "jpg", "jpeg"]
-    )
-    if uploaded_file is not None and st.sidebar.button("Retrain Generator"):
-        # Load and display uploaded image via Matplotlib to avoid Streamlit image errors
+    if uploaded_file is not None:
         image = Image.open(uploaded_file).convert("L").resize((28, 28))
-        fig1, ax1 = plt.subplots()
-        ax1.axis('off')
-        ax1.imshow(image, cmap='gray')
-        st.pyplot(fig1)
+        st.image(image, caption="Uploaded Image", width=150)
 
-        # Prepare input tensor
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
-        real = transform(image).unsqueeze(0)
 
-        # One-step update demonstration
+        real_image = transform(image).unsqueeze(0)  # Add batch dimension
+        real_image = real_image.view(-1, 784)
+
+        st.markdown("Retraining for 1 step to adapt (for demo only)...")
+
+        # Minimal retraining demo
         criterion = torch.nn.BCELoss()
-        optimizer = torch.optim.Adam(G.parameters(), lr=2e-4)
-        noise_vec = torch.randn(1, noise_dim)
-        fake = G(noise_vec)
+        optimizer = torch.optim.Adam(G.parameters(), lr=0.0002)
 
-        loss = criterion(fake.view(-1), torch.ones_like(fake.view(-1)))
+        noise = torch.randn(1, latent_dim)
+        fake_image = G(noise)
+        fake_image_flat = fake_image.view(-1, 784)
+
+        target = torch.ones_like(fake_image_flat)
+        loss = criterion(fake_image_flat, target)
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        st.success("Retraining step completed.")
-        st.write(f"Loss: {loss.item():.4f}")
+        st.success("Retraining step complete. Generated image after one step:")
 
-        # Display updated generated image
-        updated = G(noise_vec).detach().cpu().view(28, 28)
-        fig2, ax2 = plt.subplots()
-        ax2.axis('off')
-        ax2.imshow(updated, cmap='gray')
-        st.pyplot(fig2)
+        fake_image = G(noise).detach()
+        grid = vutils.make_grid(fake_image, normalize=True)
+        plt.figure(figsize=(3, 3))
+        plt.axis("off")
+        plt.imshow(grid.permute(1, 2, 0).squeeze().numpy(), cmap="gray")
+        st.pyplot(plt)
 
-# ---------------------
-# Footer
-# ---------------------
-st.markdown("---")
-st.write(
-    "Ensure you have the required libraries installed: `pip install streamlit torch torchvision matplotlib pillow`."
-)
-st.write(
-    "To run: `streamlit run app.py`. Place `generator_model.py` and `Models/generator.pth` in the same directory."
-)
+st.markdown("""
+---
+Made with ❤️ using PyTorch and Streamlit.  
+Upload your `generator_model.py` and `generator.pth` to run this app locally.
+""")
+# Note: This is a simplified example. In a real-world scenario, you would want to implement proper retraining logic and handle the model's state more robustly.
+# Ensure you have the required libraries installed:
+# pip install streamlit torch torchvision matplotlib pillow
+# To run the app, save this code in a file named `app.py` and run:
+# streamlit run app.py
+# Make sure to have the generator_model.py file in the same directory with the Generator class defined.
+# The generator.pth file should contain the trained model weights.
