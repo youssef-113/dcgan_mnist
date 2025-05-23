@@ -18,7 +18,8 @@ def load_model():
     return model
 
 G = load_model()
-latent_dim = 100
+st.sidebar.image("https://example.com/logo.png", width=150)  # Replace with your logo URL
+st.sidebar.title("DCGAN Handwritten Digit Generator")
 
 st.sidebar.header("Options")
 mode = st.sidebar.radio("Choose Mode", ("Generate Digits", "Retrain Generator"))
@@ -28,7 +29,7 @@ if mode == "Generate Digits":
 
     if st.button("Generate Digits"):
         with st.spinner("Generating images..."):
-            noise = torch.randn(num_images, latent_dim)
+            noise = torch.randn(num_images, 100)
             fake_images = G(noise).detach().cpu()
 
             # Plot generated digits
@@ -60,7 +61,7 @@ elif mode == "Retrain Generator":
         criterion = torch.nn.BCELoss()
         optimizer = torch.optim.Adam(G.parameters(), lr=0.0002)
 
-        noise = torch.randn(1, latent_dim)
+        noise = torch.randn(1, 100)
         fake_image = G(noise)
         fake_image_flat = fake_image.view(-1, 784)
 
