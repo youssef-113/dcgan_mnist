@@ -9,6 +9,7 @@ import streamlit as st
 import os
 import warnings
 warnings.filterwarnings("ignore")
+
 # Set the page config
 st.set_page_config(
     page_title="Generator Model",
