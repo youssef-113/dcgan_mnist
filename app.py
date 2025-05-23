@@ -4,17 +4,16 @@ import torchvision.utils as vutils
 import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
-from generator_model import Generator  # Make sure this file is in the same directory
+from generator_model import Generator  
 
 # Streamlit page config
-st.set_page_config(page_title="DCGAN Digit Generator", layout="centered")
 st.title("🧠 DCGAN - Handwritten Digit Generator")
 
 # Load model
 @st.cache_resource
 def load_model():
     model = Generator()
-    model.load_state_dict(torch.load("generator.pth", map_location=torch.device('cpu')))
+    model.load_state_dict(torch.load("./Models/generator.pth", map_location=torch.device('cpu')))
     model.eval()
     return model
 
