@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 from PIL import Image
 from generator_model import Generator  # Make sure this file is in the same directory
-from generator_model import Generator  
 import torch
 import torchvision.utils as vutils
 import streamlit as st
