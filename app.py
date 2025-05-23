@@ -12,9 +12,13 @@ st.title("🧠 DCGAN - Handwritten Digit Generator")
 # Load model
 @st.cache_resource
 def load_model():
-    model = Generator()
-    model.load_state_dict(torch.load("./Models/generator.pth", map_location=torch.device('cpu')))
-    model.eval()
+    try:
+        model = Generator()
+        model.load_state_dict(torch.load("./Models/generator.pth", map_location=torch.device('cpu')))
+        model.eval()
+    except FileNotFoundError as e:
+       print(f"Model file not found at {model_path}: {e}")
+       raise
     return model
 
 G = load_model()
