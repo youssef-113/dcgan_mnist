@@ -5,11 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from io import BytesIO
 from PIL import Image
+import torchvision.transforms as transforms
 from generator_model import Generator  # Ensure this file defines your Generator
 
-# ---------------------
-# Streamlit App Config
-# ---------------------
 st.set_page_config(
     page_title="DCGAN Handwritten Digit Generator",
     page_icon="🧠",
@@ -22,22 +20,20 @@ st.write(
     "Adjust parameters below and generate new samples on the fly!"
 )
 
-# ---------------------
-# Load and Cache Model
-# ---------------------
 @st.cache_resource
 def load_generator_model(path: str = "./Models/generator.pth") -> torch.nn.Module:
     model = Generator()
-    state = torch.load(path, map_location=torch.device('cpu'))
-    model.load_state_dict(state)
-    model.eval()
+    try:
+        state = torch.load(path, map_location=torch.device('cpu'))
+        model.load_state_dict(state)
+        model.eval()
+    except FileNotFoundError:
+        st.error(f"Model file not found at {path}. Please ensure the path is correct.")
+        st.stop()
     return model
 
 G = load_generator_model()
 
-# ---------------------
-# Sidebar Controls
-# ---------------------
 st.sidebar.header("Generation Settings")
 
 num_cols = st.sidebar.slider(
@@ -56,7 +52,6 @@ seed = st.sidebar.number_input(
 )
 
 if st.sidebar.button("Generate Digits"):
-    # Set seed for reproducibility
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -66,7 +61,6 @@ if st.sidebar.button("Generate Digits"):
     with st.spinner("Generating images..."):
         fake_images = G(noise).detach().cpu()
 
-    # Create grid
     grid = vutils.make_grid(
         fake_images,
         nrow=num_cols,
@@ -74,16 +68,13 @@ if st.sidebar.button("Generate Digits"):
         scale_each=True
     )
 
-    # Convert to NumPy for plotting
     grid_np = grid.permute(1, 2, 0).numpy()
 
-    # Display
     fig, ax = plt.subplots(figsize=(num_cols, num_rows))
     ax.axis("off")
     ax.imshow(grid_np)
     st.pyplot(fig)
 
-    # Allow download
     buf = BytesIO()
     plt.imsave(buf, grid_np)
     buf.seek(0)
@@ -94,9 +85,6 @@ if st.sidebar.button("Generate Digits"):
         mime="image/png"
     )
 
-# ---------------------
-# Optional: Retraining Demo (Hidden)
-# ---------------------
 st.sidebar.header("Demo: Single-Step Retrain")
 retrain = st.sidebar.checkbox(
     "Enable single-step retraining",
@@ -105,25 +93,28 @@ retrain = st.sidebar.checkbox(
 if retrain:
     st.sidebar.markdown("---")
     uploaded_file = st.sidebar.file_uploader(
-        "Upload 28×28 grayscale image",
-        type=["png", "jpg", "jpeg"]
+        "Upload 28×28 grayscale image", type=["png", "jpg", "jpeg"]
     )
     if uploaded_file is not None and st.sidebar.button("Retrain Generator"):
+        # Load and display uploaded image via Matplotlib to avoid Streamlit image errors
         image = Image.open(uploaded_file).convert("L").resize((28, 28))
-        st.image(image, caption="Uploaded Image", width=100)
+        fig1, ax1 = plt.subplots()
+        ax1.axis('off')
+        ax1.imshow(image, cmap='gray')
+        st.pyplot(fig1)
 
-        # Prepare input
+        # Prepare input tensor
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.5,), (0.5,))
         ])
         real = transform(image).unsqueeze(0)
 
-        # One-step update
+        # One-step update demonstration
         criterion = torch.nn.BCELoss()
         optimizer = torch.optim.Adam(G.parameters(), lr=2e-4)
-        noise = torch.randn(1, noise_dim)
-        fake = G(noise)
+        noise_vec = torch.randn(1, noise_dim)
+        fake = G(noise_vec)
 
         loss = criterion(fake.view(-1), torch.ones_like(fake.view(-1)))
         optimizer.zero_grad()
@@ -133,19 +124,14 @@ if retrain:
         st.success("Retraining step completed.")
         st.write(f"Loss: {loss.item():.4f}")
 
-        # Show updated sample
-        updated = G(noise).detach().cpu()
+        # Display updated generated image
+        updated = G(noise_vec).detach().cpu().view(28, 28)
         fig2, ax2 = plt.subplots()
         ax2.axis('off')
-        ax2.imshow(updated.view(28, 28), cmap='gray')
+        ax2.imshow(updated, cmap='gray')
         st.pyplot(fig2)
 
-# ---------------------
-# Footer
-# ---------------------
-st.markdown(
-    "---"
-)
+st.markdown("---")
 st.write(
     "Ensure you have the required libraries installed: `pip install streamlit torch torchvision matplotlib pillow`."
 )
