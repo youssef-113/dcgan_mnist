@@ -3,6 +3,17 @@ import torchvision.transforms as transforms
 from PIL import Image
 from generator_model import Generator  # Make sure this file is in the same directory
 from generator_model import Generator  
+import torch
+import torchvision.utils as vutils
+import streamlit as st
+import os
+import warnings
+warnings.filterwarnings("ignore")
+# Set the page config
+st.set_page_config(
+    page_title="Generator Model",
+    page_icon="🧠"
+    )
 
 # Streamlit page config
 st.title("🧠 DCGAN - Handwritten Digit Generator")
